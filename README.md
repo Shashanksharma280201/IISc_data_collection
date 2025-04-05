@@ -10,3 +10,12 @@
 
 - ``` Ctrl + A + X ``` This is to deletet the pane
 - ``` Ctrl + A + D ``` This is to close the session but this wont delete the session 
+
+
+## Run all the cameras: 
+Use the data_colection.sh file 
+```
+chmod +x  data_colection.sh
+./data_collection.sh  
+```
+
