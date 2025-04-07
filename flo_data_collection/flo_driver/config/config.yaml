@@ -1,0 +1,21 @@
+oakd:
+  enable_imu: True
+  enable_rgb_camera: True
+  enable_depth_camera: True
+  imu_hz: 100
+  imu_timeout: 1.0
+  imu_acceleration_covariance_diag: [0.02, 0.02, 0.02]
+  imu_angular_velocity_covariance_diag: [0.001, 0.001, 0.001]
+  imu_orientation_covariance_diag: [0.00001, 0.00001, 0.00001]
+  rgb_camera_timeout: 5.0
+  rgb_camera_frame: "oakd_rgb"
+  rgb_camera_fps: 10.0
+  enable_rgb_uvc: False
+  rgb_camera_width: 640
+  rgb_uvc_device_name: "/dev/video10"
+  rgb_camera_height: 480
+  depth_camera_timeout: 5.0
+  depth_camera_frame: 'oakd_depth'
+  depth_camera_fps: 10.0
+
+
