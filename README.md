@@ -19,3 +19,4 @@ chmod +x  data_colection.sh
 ./data_collection.sh  
 ```
 
+

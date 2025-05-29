@@ -1,0 +1,4 @@
+string path_to_data_dir
+---
+bool success
+string message

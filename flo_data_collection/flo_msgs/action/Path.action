@@ -1,0 +1,9 @@
+std_msgs/Header header
+
+Path2D path
+string path_to_logdir
+---
+bool success
+string message
+uint8 error_code
+---

@@ -1,0 +1,7 @@
+string frame
+
+Waypoint waypoint
+---
+bool success
+string message
+---

@@ -1,0 +1,9 @@
+std_msgs/Header header
+
+Path2D[] paths
+Pose2D final_pose
+---
+bool success
+string message
+---
+uint32 number_of_paths_done

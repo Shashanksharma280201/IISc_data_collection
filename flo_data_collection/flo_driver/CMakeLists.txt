@@ -32,27 +32,16 @@ include_directories(
   include
 )
 
-add_executable(serial_port src/serial_port.cpp)
-target_include_directories(serial_port PUBLIC
-  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
-  "$<INSTALL_INTERFACE:include>"
-  ${rclcpp_INCLUDE_DIRS}
-  ${std_msgs_INCLUDE_DIRS}
-  ${SERIAL_INCLUDE_DIRS}
-)
-target_link_libraries(serial_port
-  ${rclcpp_LIBRARIES}
-  ${std_msgs_LIBRARIES}
-  ${SERIAL_LDFLAGS}
-)
-
-install(TARGETS
-    serial_port
-    DESTINATION lib/${PROJECT_NAME})
 
 install(PROGRAMS
     flo_driver/flo_base_diff.py
+    flo_driver/flysky_controller.py
     flo_driver/oakd.py
+    flo_driver/nmea_topic_driver.py
+    flo_driver/serial_port_read.py
+    flo_driver/ps4_controller_utils.py
+    flo_driver/ps4_controller.py
+    flo_driver/ntrip.py
     DESTINATION lib/${PROJECT_NAME})
     
 install(DIRECTORY launch

@@ -1,0 +1,8 @@
+string frame
+Waypoint[] waypoints
+float64 final_yaw # In radian
+---
+bool success
+string message
+---
+uint32 number_of_waypoints_done

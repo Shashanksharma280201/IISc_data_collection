@@ -1,0 +1,2 @@
+bool connected
+float64 battery_percent
