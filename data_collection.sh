@@ -7,7 +7,7 @@ LOG_DIR="/home/flo/logs/zed_recordings"
 PYTHON_SCRIPT_1="ros2 launch zed_wrapper dual_zed_cameras.launch.py"
 PYTHON_SCRIPT_2="ros2 launch flo_driver cam_launch.py"
 PYTHON_SCRIPT_3="ros2 launch rslidar_sdk start.py"
-PYTHON_SCRIPT_4="python3 multi_camera_recorder.py"
+PYTHON_SCRIPT_4="python3 folder_recording.py"
 
 mkdir -p "$LOG_DIR"
 
@@ -51,7 +51,7 @@ main() {
     tmux send-keys -t "$SESSION" "source install/setup.bash" C-m
     tmux send-keys -t "$SESSION" "$PYTHON_SCRIPT_2" C-m
 
-    sleep 15
+    sleep 5
     # Pane 3 (split below pane 1)
     tmux select-pane -t "$SESSION:0.1"
     tmux split-window -v

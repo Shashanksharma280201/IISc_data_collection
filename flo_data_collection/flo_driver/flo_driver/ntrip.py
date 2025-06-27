@@ -43,12 +43,12 @@ class NTRIPRos(Node):
             'authenticate'
         ).get_parameter_value().bool_value
 
-        self.declare_parameter('username', 'pratham@flomobility.com')
+        self.declare_parameter('username', '')
         self.username = self.get_parameter(
             'username'
         ).get_parameter_value().string_value
 
-        self.declare_parameter('password', 'FloStation123')
+        self.declare_parameter('password', '')
         self.password = self.get_parameter(
             'password'
         ).get_parameter_value().string_value

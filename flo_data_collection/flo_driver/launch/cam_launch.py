@@ -32,7 +32,7 @@ def generate_launch_description():
         "frame_id": "cam1",
         "image_width": 1920,
         "image_height": 1080,
-        "video_device": "/dev/video6",
+        "video_device": "/dev/video2",
         "pixel_format": "uyvy",  # <- Try this instead of mjpeg2rgb
         "io_method": "mmap",
         "brightness": 0,
