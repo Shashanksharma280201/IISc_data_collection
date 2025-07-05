@@ -10,12 +10,14 @@ from botocore.exceptions import BotoCoreError, ClientError
 import subprocess
 import signal
 import threading
+import json
 import shutil
+import time
+import zipfile
 
 class MultiCameraRecorder(Node):
     def __init__(self):
         super().__init__('multi_camera_recorder')
-
         self.get_logger().info("Initializing MultiCameraRecorder...")
 
         self.s3_bucket = "iisc-data-collection"
@@ -42,36 +44,48 @@ class MultiCameraRecorder(Node):
         self.video_writers = {}
         self.last_rotation_time = {}
         self.last_file_path = {}
-        self.duration = timedelta(minutes=1)
+        self.duration = timedelta(minutes=3)
         self.fps = 30
         self.upload_threads = []
 
-        self.session_dir = ""
-        self.video_dirs = {}
-        self.bag_dir = ""
+        self.current_session = None
+        self.session_start_time = datetime.now()
+        self.start_new_session()
 
+        upload_thread = threading.Thread(target=self.upload_loop, daemon=True)
+        upload_thread.start()
+
+    def start_new_session(self):
+        self.current_session = datetime.now().strftime('session_%Y%m%d_%H%M%S')
+        os.makedirs(self.current_session, exist_ok=True)
         for cam in self.camera_topics:
+            os.makedirs(f"{self.current_session}/{cam}", exist_ok=True)
             self.create_subscription(Image, self.camera_topics[cam], self.generate_callback(cam), 10)
+            self.last_rotation_time[cam] = datetime.now()
 
-        self.bag_process = None
-        self.last_bag_time = datetime.now()
-        self.current_bag_path = ""
-        self.create_new_session_folder()
+        os.makedirs(f"{self.current_session}/bag", exist_ok=True)
         self.start_new_bag()
+        self.create_metadata_file()
+        self.get_logger().info(f"Started new session: {self.current_session}")
 
-        self.get_logger().info("Session setup complete. Uploading previous sessions if any...")
-        self.upload_pending_sessions()
+    def rotate_session(self):
+        self.stop_current_bag()
+        for writer in self.video_writers.values():
+            writer.release()
+        self.video_writers.clear()
+        self.start_new_session()
 
-    def create_new_session_folder(self):
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.session_dir = f"session_{timestamp}"
-        os.makedirs(self.session_dir, exist_ok=True)
-        for cam in self.camera_topics:
-            cam_dir = os.path.join(self.session_dir, cam)
-            os.makedirs(cam_dir, exist_ok=True)
-            self.video_dirs[cam] = cam_dir
-        self.bag_dir = os.path.join(self.session_dir, "bag")
-        os.makedirs(self.bag_dir, exist_ok=True)
+    def create_metadata_file(self):
+        metadata = {
+            "session": self.current_session,
+            "start_time": datetime.now().isoformat(),
+            "camera_topics": self.camera_topics,
+            "bag_topics": self.bag_topics,
+            "fps": self.fps,
+            "duration_minutes": self.duration.total_seconds() / 60
+        }
+        with open(f"{self.current_session}/metadata.json", "w") as f:
+            json.dump(metadata, f, indent=2)
 
     def generate_callback(self, cam):
         def callback(msg):
@@ -83,13 +97,26 @@ class MultiCameraRecorder(Node):
 
             now = datetime.now()
 
-            if cam not in self.video_writers:
-                filename = now.strftime(f"{self.video_dirs[cam]}/%Y%m%d_%H%M%S.mp4")
+            if cam not in self.video_writers or (now - self.last_rotation_time[cam]) >= self.duration:
+                if cam in self.video_writers:
+                    self.video_writers[cam].release()
+                    file_to_upload = self.last_file_path[cam]
+                    thread = threading.Thread(target=self.upload_file_to_s3, args=(cam, file_to_upload))
+                    thread.start()
+                    self.upload_threads.append(thread)
+
+                if (now - self.session_start_time) >= self.duration:
+                    self.rotate_session()
+                    self.session_start_time = now
+
+                filename = now.strftime(f"{self.current_session}/{cam}/%Y%m%d_%H%M%S.mp4")
                 height, width, _ = frame.shape
                 writer = cv2.VideoWriter(filename, cv2.VideoWriter_fourcc(*'mp4v'), self.fps, (width, height))
+
                 if not writer.isOpened():
                     self.get_logger().error(f"[{cam}] Failed to open video writer for {filename}")
                     return
+
                 self.video_writers[cam] = writer
                 self.last_rotation_time[cam] = now
                 self.last_file_path[cam] = filename
@@ -98,80 +125,89 @@ class MultiCameraRecorder(Node):
             self.video_writers[cam].write(frame)
 
             if (now - self.last_bag_time) >= self.duration:
-                self.get_logger().debug("Time to rotate session.")
                 self.stop_current_bag()
-                for writer in self.video_writers.values():
-                    writer.release()
-                self.upload_session_to_s3(self.session_dir, os.path.basename(self.session_dir))
-                self.video_writers.clear()
-                self.create_new_session_folder()
                 self.start_new_bag()
 
         return callback
 
     def start_new_bag(self):
         now = datetime.now()
-        bag_folder_name = now.strftime("%Y%m%d_%H%M%S")
-        self.current_bag_path = os.path.join(self.bag_dir, bag_folder_name)
-        os.makedirs(self.bag_dir, exist_ok=True)  # Ensure bag dir exists
+        bag_dir = os.path.join(self.current_session, "bag", now.strftime("%Y%m%d_%H%M%S"))
+        os.makedirs(bag_dir, exist_ok=True)
+        self.current_bag_path = bag_dir
+
         try:
-            # Use only the folder name for `-o`, and `cwd` to set working directory
             self.bag_process = subprocess.Popen(
-                ['ros2', 'bag', 'record', '-o', bag_folder_name] + self.bag_topics,
-                cwd=self.bag_dir,  # run inside the bag dir
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                ['ros2', 'bag', 'record', '-o', os.path.join(bag_dir, 'data')] + self.bag_topics,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
             )
-            self.get_logger().info(f"Started new rosbag at: {self.current_bag_path}")
+            self.get_logger().info(f"Started new rosbag at: {bag_dir}")
         except Exception as e:
             self.get_logger().error(f"Failed to start rosbag: {e}")
-        self.last_bag_time = now
 
+        self.last_bag_time = datetime.now()
 
     def stop_current_bag(self):
-        if self.bag_process:
+        if hasattr(self, 'bag_process') and self.bag_process:
             self.bag_process.send_signal(signal.SIGINT)
-            self.bag_process.wait()
+            try:
+                self.bag_process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.get_logger().warning("Bag process did not terminate in time, killing it.")
+                self.bag_process.kill()
+            time.sleep(2)
             self.get_logger().info(f"Stopped rosbag: {self.current_bag_path}")
             self.bag_process = None
 
-    def upload_pending_sessions(self):
-        for folder in os.listdir('.'):
-            if folder.startswith('session_'):
-                session_path = os.path.abspath(folder)
-                s3_key = folder
-                marker_file = os.path.join(session_path, '.uploaded')
-                if os.path.exists(marker_file):
-                    continue
-                thread = threading.Thread(target=self.upload_session_to_s3, args=(session_path, s3_key))
-                thread.start()
-                self.upload_threads.append(thread)
-
-    def upload_session_to_s3(self, session_path, s3_key):
-        try:
+    def zip_session(self, session_path):
+        zip_path = f"{session_path}.zip"
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for root, _, files in os.walk(session_path):
                 for file in files:
-                    if file == '.uploaded':
-                        continue
                     full_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(full_path, session_path)
-                    self.s3_client.upload_file(full_path, self.s3_bucket, f"{s3_key}/{rel_path}")
-                    self.get_logger().info(f"Uploaded {rel_path} to S3 under {s3_key}/")
-            with open(os.path.join(session_path, '.uploaded'), 'w') as f:
-                f.write('Uploaded to S3')
-        except Exception as e:
-            self.get_logger().error(f"Failed to upload session {s3_key} to S3: {e}")
+                    arcname = os.path.relpath(full_path, start=session_path)
+                    zipf.write(full_path, arcname)
+        return zip_path
 
-    def destroy_node(self):
-        self.get_logger().info("Shutting down MultiCameraRecorder...")
-        for cam, writer in self.video_writers.items():
-            writer.release()
-        self.stop_current_bag()
-        for t in self.upload_threads:
-            t.join()
-        self.upload_session_to_s3(self.session_dir, os.path.basename(self.session_dir))
-        self.get_logger().info("All uploads completed.")
-        super().destroy_node()
+    def upload_loop(self):
+        while True:
+            time.sleep(10)
+            sessions = [d for d in os.listdir('.') if d.startswith('session_') and os.path.isdir(d)]
+            sessions.sort()
+            for session in sessions:
+                if session == self.current_session:
+                    continue
+                zip_path = self.zip_session(session)
+                success = self.upload_session_to_s3(zip_path)
+                if success:
+                    shutil.rmtree(session)
+                    os.remove(zip_path)
+                    self.get_logger().info(f"Uploaded and deleted session: {session}")
+                else:
+                    self.get_logger().warning(f"Failed to upload session: {session}")
+
+            if not sessions:
+                self.get_logger().info("No unuploaded session found. Exiting...")
+                os._exit(0)
+
+    def upload_session_to_s3(self, zip_file_path):
+        try:
+            self.s3_client.upload_file(zip_file_path, self.s3_bucket, os.path.basename(zip_file_path))
+            self.get_logger().info(f"Uploaded {zip_file_path} to S3.")
+            return True
+        except Exception as e:
+            self.get_logger().error(f"Upload failed for {zip_file_path}: {e}")
+            return False
+
+    def upload_file_to_s3(self, cam, file_path):
+        s3_key = f"{file_path}"
+        try:
+            self.s3_client.upload_file(file_path, self.s3_bucket, s3_key)
+            self.get_logger().info(f"[{cam}] Uploaded {s3_key} to S3.")
+            os.remove(file_path)
+        except Exception as e:
+            self.get_logger().error(f"[{cam}] Upload failed for {s3_key}: {e}")
 
 
 def main(args=None):

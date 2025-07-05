@@ -1,5 +1,0 @@
-string frame
----
-bool success
-string message
-Pose2D pose

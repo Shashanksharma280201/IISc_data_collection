@@ -5,7 +5,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_DIR="/home/flo/logs/zed_recordings"
 
 PYTHON_SCRIPT_1="ros2 launch zed_wrapper dual_zed_cameras.launch.py"
-PYTHON_SCRIPT_2="ros2 launch flo_driver cam_launch.py"
+PYTHON_SCRIPT_2="ros2 launch monocamera_publisher monocamera_launch.py "
 PYTHON_SCRIPT_3="ros2 launch rslidar_sdk start.py"
 PYTHON_SCRIPT_4="python3 folder_recording.py"
 
@@ -51,14 +51,14 @@ main() {
     tmux send-keys -t "$SESSION" "source install/setup.bash" C-m
     tmux send-keys -t "$SESSION" "$PYTHON_SCRIPT_2" C-m
 
-    sleep 5
+    # sleep 5
     # Pane 3 (split below pane 1)
     tmux select-pane -t "$SESSION:0.1"
     tmux split-window -v
     tmux send-keys -t "$SESSION" "bash" C-m
     tmux send-keys -t "$SESSION" "cd ~/IISc_data_collection" C-m
     # tmux send-keys -t "$SESSION" "source install/setup.bash" C-m
-    tmux send-keys -t "$SESSION" "$PYTHON_SCRIPT_4" C-m
+    # tmux send-keys -t "$SESSION" "$PYTHON_SCRIPT_4" C-m
 
     tmux select-layout tiled \; attach-session -t "$SESSION"
 }

@@ -1,7 +1,0 @@
-string frame
-
-float64 yaw
----
-bool success
-string message
----

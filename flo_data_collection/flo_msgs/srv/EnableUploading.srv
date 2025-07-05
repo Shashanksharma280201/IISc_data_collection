@@ -1,5 +1,0 @@
-bool enable
-uint64 upload_delay
----
-bool success
-string message

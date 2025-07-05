@@ -1,5 +1,0 @@
-string frame
-string name # If name is not empty path will be saved locally
----
-bool success
-string message

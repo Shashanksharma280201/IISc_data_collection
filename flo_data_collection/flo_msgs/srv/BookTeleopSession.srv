@@ -1,5 +1,0 @@
-bool book
-string trigger # who books the session
----
-bool success
-string message
