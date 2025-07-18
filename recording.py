@@ -18,7 +18,7 @@ class MultiCameraRecorder(Node):
         self.get_logger().info("Initializing MultiCameraRecorder...")
 
         # AWS S3 setup
-        self.s3_bucket = "iisc-data-store"
+        self.s3_bucket = "iisc-data-collection"
         self.s3_client = boto3.client('s3')
 
         # Camera topics
@@ -44,7 +44,7 @@ class MultiCameraRecorder(Node):
         self.video_writers = {}
         self.last_rotation_time = {}
         self.last_file_path = {}
-        self.duration = timedelta(minutes=1)
+        self.duration = timedelta(minutes=5)
         self.fps = 30
 
         self.upload_threads = []

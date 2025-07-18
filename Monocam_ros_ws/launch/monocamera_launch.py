@@ -7,26 +7,27 @@ def generate_launch_description():
     # Get the package directory
     package_dir = get_package_share_directory('monocamera_publisher')
     
-    # Camera configurations - Based on your working script
+    # Camera configurations
     cam_configs = {
         "cam0": {
             "camera_name": "cam1",
             "frame_id": "cam1_frame",
             "video_device": "/dev/video2",
+            "pose": ['0.2', '0.1', '0.0', '0', '0', '0', '1']  # example pose from lidar_imu_link
         },
         "cam1": {
             "camera_name": "cam2",
             "frame_id": "cam2_frame",
             "video_device": "/dev/video4",
+            "pose": ['-0.2', '0.1', '0.0', '0', '0', '0', '1']  # example pose from lidar_imu_link
         },
     }
 
-    # Common settings
     shared_params = {
         "framerate": 30.0,
         "image_width": 1920,
         "image_height": 1080,
-        "pixel_format": "mjpeg2rgb",  # Must be in supported list
+        "pixel_format": "mjpeg2rgb",
         "io_method": "mmap",
         "brightness": 0,
         "contrast": 48,
@@ -34,7 +35,7 @@ def generate_launch_description():
 
     nodes = []
 
-    # Create camera nodes
+    # Camera nodes
     for cam_name, cam_info in cam_configs.items():
         params = {**shared_params, **cam_info}
         node = Node(
@@ -53,22 +54,18 @@ def generate_launch_description():
         )
         nodes.append(node)
 
-    # Static transform publishers for each camera frame
+    # Static TFs from lidar_imu_link → each camera frame
     for cam_name, cam_info in cam_configs.items():
         static_tf = Node(
             package='tf2_ros',
             executable='static_transform_publisher',
             name=f'{cam_name}_tf_broadcaster',
-            arguments=[
-                '0', '0', '0',  # x, y, z
-                '0', '0', '0', '1',  # qx, qy, qz, qw (quaternion)
-                'base_link',  # parent frame
-                cam_info['frame_id']  # child frame
-            ]
+            arguments=cam_info['pose'] + ['lidar_imu_link', cam_info['frame_id']],
+            output='screen'
         )
         nodes.append(static_tf)
 
-    # Camera info publishers for each camera
+    # Camera info publishers
     for cam_name, cam_info in cam_configs.items():
         camera_info_pub = Node(
             package='monocamera_publisher',
@@ -84,7 +81,7 @@ def generate_launch_description():
         )
         nodes.append(camera_info_pub)
     
-    # RViz2 node with custom config
+    # RViz2 node
     rviz_config_file = os.path.join(package_dir, 'config', 'multicamera_rviz.rviz')
     rviz_node = Node(
         package='rviz2',
