@@ -1,10 +1,11 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from ament_index_python.packages import get_package_share_directory
+
 
 def generate_launch_description():
     # Path to the original zed_camera.launch.py
@@ -38,17 +39,6 @@ def generate_launch_description():
             'camera_model': 'zedx',
             'node_name': 'zed2_node',
             # 'serial_number': '26994432'  # Replace with the actual serial number of the second camera
-        }.items()
-    )
-
-    # Second ZED camera (zed2)
-    zed2_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(zed_launch_path),
-        launch_arguments={
-            'camera_name': 'zed2',
-            'namespace': 'zed2',
-            'camera_model': 'zedx',
-            'node_name': 'zed2_node',
         }.items()
     )
 
