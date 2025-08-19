@@ -11,7 +11,7 @@ def generate_launch_description():
     camera_config = {
         "camera_name": "mono_camera",
         "frame_id": "camera_frame",
-        "video_device": "/dev/video0",
+        "video_device": "/dev/video2",
         "framerate": 30.0,
         "image_width": 1920,
         "image_height": 1080,

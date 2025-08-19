@@ -24,7 +24,7 @@ def generate_launch_description():
         launch_arguments={
             'camera_name': 'zed1',
             'namespace': 'zed1',
-            'camera_model': 'zedx',
+            'camera_model': 'zed2i',
             'node_name': 'zed1_node',
             # 'serial_number': '26994360'  # Replace with the actual serial number of the first camera
         }.items()
@@ -36,7 +36,7 @@ def generate_launch_description():
         launch_arguments={
             'camera_name': 'zed2',
             'namespace': 'zed2',
-            'camera_model': 'zedx',
+            'camera_model': 'zed2i',
             'node_name': 'zed2_node',
             # 'serial_number': '26994432'  # Replace with the actual serial number of the second camera
         }.items()

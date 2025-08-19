@@ -6,7 +6,7 @@ def generate_launch_description():
 
     rviz_config=get_package_share_directory('rslidar_sdk')+'/rviz/rviz2.rviz'
 
-    config_file = '/home/flo/IISc_data_collection/src/rslidar_sdk/config/config.yaml' # your config file path
+    config_file = '/home/shanks/Videos/IISc_data_collection/src/rslidar_sdk/config/config.yaml' # your config file path
     
     return LaunchDescription([
         Node(namespace='rslidar_sdk', package='rslidar_sdk', executable='rslidar_sdk_node', output='screen', parameters=[{'config_path': config_file}]),
